@@ -1,8 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
-import { resumirHoras, percentual } from "../domain/agregacao.js";
-import type { Faixas } from "../domain/agregacao.js";
 
 export interface Filtro {
+  turno: number;
   uf?: string;
   municipio?: number;
 }
@@ -14,6 +13,7 @@ export interface MunicipioSalvo {
 }
 
 export interface SecaoGravada {
+  turno: number;
   uf: string;
   cdMunicipio: number;
   zona: number;
@@ -22,6 +22,7 @@ export interface SecaoGravada {
 }
 
 export interface ProgressoUf {
+  turno: number;
   uf: string;
   status: string;
   arquivos: number;
@@ -33,14 +34,7 @@ export interface ProgressoUf {
 
 export interface ResumoConsulta {
   votosTotal: number;
-  votosAte17: number;
-  votos17a18: number;
-  votos18a19: number;
-  votosApos19: number;
-  votosApos17: number;
-  pctApos17: number;
   secoes: number;
-  secoesComVotoTardio: number;
 }
 
 export interface HoraConsulta {
@@ -52,11 +46,6 @@ export interface RankingLinha {
   chave: string;
   nome: string;
   votosTotal: number;
-  votosApos17: number;
-  votos17a18: number;
-  votos18a19: number;
-  votosApos19: number;
-  pctApos17: number;
 }
 
 /**
@@ -108,9 +97,9 @@ export class Repositorio {
     });
   }
 
-  limparUf(uf: string): void {
-    this.db.prepare("DELETE FROM votos_hora WHERE uf = ?").run(uf);
-    this.db.prepare("DELETE FROM secoes WHERE uf = ?").run(uf);
+  limparUf(turno: number, uf: string): void {
+    this.db.prepare("DELETE FROM votos_hora WHERE turno = ? AND uf = ?").run(turno, uf);
+    this.db.prepare("DELETE FROM secoes WHERE turno = ? AND uf = ?").run(turno, uf);
   }
 
   /**
@@ -118,50 +107,34 @@ export class Repositorio {
    * se acumulam em vez de se substituírem.
    */
   somarSecao(secao: SecaoGravada): void {
-    const faixas = resumirHoras(secao.porHora);
+    const total = secao.porHora.reduce((soma, quantidade) => soma + quantidade, 0);
     const voto = this.db.prepare(
-      `INSERT INTO votos_hora (uf, cd_municipio, hora, votos)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(uf, cd_municipio, hora) DO UPDATE SET votos = votos + excluded.votos`,
+      `INSERT INTO votos_hora (turno, uf, cd_municipio, hora, votos)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(turno, uf, cd_municipio, hora) DO UPDATE SET votos = votos + excluded.votos`,
     );
     for (let hora = 0; hora < 24; hora += 1) {
       const quantidade = secao.porHora[hora] ?? 0;
       if (quantidade === 0) continue;
-      voto.run(secao.uf, secao.cdMunicipio, hora, quantidade);
+      voto.run(secao.turno, secao.uf, secao.cdMunicipio, hora, quantidade);
     }
     this.db
       .prepare(
-        `INSERT INTO secoes (
-           uf, cd_municipio, zona, secao, votos_total, votos_apos_17,
-           votos_17_18, votos_18_19, votos_apos_19
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(uf, cd_municipio, zona, secao) DO UPDATE SET
-           votos_total = votos_total + excluded.votos_total,
-           votos_apos_17 = votos_apos_17 + excluded.votos_apos_17,
-           votos_17_18 = votos_17_18 + excluded.votos_17_18,
-           votos_18_19 = votos_18_19 + excluded.votos_18_19,
-           votos_apos_19 = votos_apos_19 + excluded.votos_apos_19`,
+        `INSERT INTO secoes (turno, uf, cd_municipio, zona, secao, votos_total)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(turno, uf, cd_municipio, zona, secao) DO UPDATE SET
+           votos_total = votos_total + excluded.votos_total`,
       )
-      .run(
-        secao.uf,
-        secao.cdMunicipio,
-        secao.zona,
-        secao.secao,
-        faixas.total,
-        faixas.apos17,
-        faixas.h17,
-        faixas.h18,
-        faixas.apos19,
-      );
+      .run(secao.turno, secao.uf, secao.cdMunicipio, secao.zona, secao.secao, total);
   }
 
   registrarProgresso(progresso: Omit<ProgressoUf, "atualizadoEm"> & { atualizadoEm?: string }): void {
     const quando = progresso.atualizadoEm ?? new Date().toISOString();
     this.db
       .prepare(
-        `INSERT INTO etl_progresso (uf, status, arquivos, erros, votos, detalhe, atualizado_em)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(uf) DO UPDATE SET
+        `INSERT INTO etl_progresso (turno, uf, status, arquivos, erros, votos, detalhe, atualizado_em)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(turno, uf) DO UPDATE SET
            status = excluded.status,
            arquivos = excluded.arquivos,
            erros = excluded.erros,
@@ -169,7 +142,16 @@ export class Repositorio {
            detalhe = excluded.detalhe,
            atualizado_em = excluded.atualizado_em`,
       )
-      .run(progresso.uf, progresso.status, progresso.arquivos, progresso.erros, progresso.votos, progresso.detalhe, quando);
+      .run(
+        progresso.turno,
+        progresso.uf,
+        progresso.status,
+        progresso.arquivos,
+        progresso.erros,
+        progresso.votos,
+        progresso.detalhe,
+        quando,
+      );
   }
 
   definirMeta(chave: string, valor: string): void {
@@ -191,17 +173,22 @@ export class Repositorio {
     return linhas.map((linha) => linha.uf);
   }
 
+  turnosComVoto(): number[] {
+    const linhas = this.db.prepare("SELECT DISTINCT turno FROM votos_hora ORDER BY turno").all() as { turno: number }[];
+    return linhas.map((linha) => Number(linha.turno));
+  }
+
   listarProgresso(): ProgressoUf[] {
     const linhas = this.db
       .prepare(
-        `SELECT uf, status, arquivos, erros, votos, detalhe, atualizado_em AS atualizadoEm
-         FROM etl_progresso ORDER BY uf`,
+        `SELECT turno, uf, status, arquivos, erros, votos, detalhe, atualizado_em AS atualizadoEm
+         FROM etl_progresso ORDER BY turno, uf`,
       )
       .all() as unknown as ProgressoUf[];
     return linhas.map(numeroProgresso);
   }
 
-  municipiosDaUf(uf: string): { cdMunicipio: number; nome: string }[] {
+  municipiosDaUf(uf: string, turno: number): { cdMunicipio: number; nome: string }[] {
     const linhas = this.db
       .prepare(
         `SELECT m.cd_municipio AS cdMunicipio, m.nome AS nome
@@ -209,11 +196,11 @@ export class Repositorio {
          WHERE m.uf = ?
            AND EXISTS (
              SELECT 1 FROM votos_hora v
-             WHERE v.uf = m.uf AND v.cd_municipio = m.cd_municipio
+             WHERE v.turno = ? AND v.uf = m.uf AND v.cd_municipio = m.cd_municipio
            )
          ORDER BY m.nome`,
       )
-      .all(uf) as { cdMunicipio: number; nome: string }[];
+      .all(uf, turno) as { cdMunicipio: number; nome: string }[];
     return linhas;
   }
 
@@ -225,52 +212,18 @@ export class Repositorio {
   }
 
   resumo(filtro: Filtro): ResumoConsulta {
-    const votos = this.where("votos_hora", filtro);
+    const votos = this.where(filtro);
     const linha = this.db
-      .prepare(
-        `SELECT
-           COALESCE(SUM(votos), 0) AS total,
-           COALESCE(SUM(CASE WHEN hora < 17 THEN votos ELSE 0 END), 0) AS ate17,
-           COALESCE(SUM(CASE WHEN hora = 17 THEN votos ELSE 0 END), 0) AS h17,
-           COALESCE(SUM(CASE WHEN hora = 18 THEN votos ELSE 0 END), 0) AS h18,
-           COALESCE(SUM(CASE WHEN hora >= 19 THEN votos ELSE 0 END), 0) AS apos19
-         FROM votos_hora ${votos.sql}`,
-      )
-      .get(...votos.params) as Record<string, number>;
-
-    const secoes = this.where("secoes", filtro);
-    const contagem = this.db
-      .prepare(
-        `SELECT
-           COUNT(*) AS secoes,
-           COALESCE(SUM(CASE WHEN votos_apos_17 > 0 THEN 1 ELSE 0 END), 0) AS tardias
-         FROM secoes ${secoes.sql}`,
-      )
-      .get(...secoes.params) as { secoes: number; tardias: number };
-
-    const faixas: Faixas = {
-      total: Number(linha.total),
-      ate17: Number(linha.ate17),
-      h17: Number(linha.h17),
-      h18: Number(linha.h18),
-      apos19: Number(linha.apos19),
-      apos17: Number(linha.h17) + Number(linha.h18) + Number(linha.apos19),
-    };
-    return {
-      votosTotal: faixas.total,
-      votosAte17: faixas.ate17,
-      votos17a18: faixas.h17,
-      votos18a19: faixas.h18,
-      votosApos19: faixas.apos19,
-      votosApos17: faixas.apos17,
-      pctApos17: percentual(faixas.apos17, faixas.total),
-      secoes: Number(contagem.secoes),
-      secoesComVotoTardio: Number(contagem.tardias),
-    };
+      .prepare(`SELECT COALESCE(SUM(votos), 0) AS total FROM votos_hora ${votos.sql}`)
+      .get(...votos.params) as { total: number };
+    const secoes = this.db
+      .prepare(`SELECT COUNT(*) AS secoes FROM secoes ${votos.sql}`)
+      .get(...votos.params) as { secoes: number };
+    return { votosTotal: Number(linha.total), secoes: Number(secoes.secoes) };
   }
 
   horaAHora(filtro: Filtro): HoraConsulta[] {
-    const votos = this.where("votos_hora", filtro);
+    const votos = this.where(filtro);
     const linhas = this.db
       .prepare(`SELECT hora, SUM(votos) AS votos FROM votos_hora ${votos.sql} GROUP BY hora`)
       .all(...votos.params) as { hora: number; votos: number }[];
@@ -279,49 +232,39 @@ export class Repositorio {
     return porHora;
   }
 
-  rankingUf(): RankingLinha[] {
+  rankingUf(turno: number): RankingLinha[] {
     const linhas = this.db
       .prepare(
-        `SELECT
-           uf AS chave,
-           uf AS nome,
-           SUM(votos) AS votosTotal,
-           SUM(CASE WHEN hora >= 17 THEN votos ELSE 0 END) AS votosApos17,
-           SUM(CASE WHEN hora = 17 THEN votos ELSE 0 END) AS votos17a18,
-           SUM(CASE WHEN hora = 18 THEN votos ELSE 0 END) AS votos18a19,
-           SUM(CASE WHEN hora >= 19 THEN votos ELSE 0 END) AS votosApos19
+        `SELECT uf AS chave, uf AS nome, SUM(votos) AS votosTotal
          FROM votos_hora
+         WHERE turno = ?
          GROUP BY uf
-         ORDER BY votosApos17 DESC, uf`,
+         ORDER BY votosTotal DESC, uf`,
       )
-      .all() as unknown as RankingLinha[];
+      .all(turno) as unknown as RankingLinha[];
     return linhas.map(completarRanking);
   }
 
-  rankingMunicipios(uf: string): RankingLinha[] {
+  rankingMunicipios(turno: number, uf: string): RankingLinha[] {
     const linhas = this.db
       .prepare(
         `SELECT
            CAST(v.cd_municipio AS TEXT) AS chave,
            COALESCE(m.nome, CAST(v.cd_municipio AS TEXT)) AS nome,
-           SUM(v.votos) AS votosTotal,
-           SUM(CASE WHEN v.hora >= 17 THEN v.votos ELSE 0 END) AS votosApos17,
-           SUM(CASE WHEN v.hora = 17 THEN v.votos ELSE 0 END) AS votos17a18,
-           SUM(CASE WHEN v.hora = 18 THEN v.votos ELSE 0 END) AS votos18a19,
-           SUM(CASE WHEN v.hora >= 19 THEN v.votos ELSE 0 END) AS votosApos19
+           SUM(v.votos) AS votosTotal
          FROM votos_hora v
          LEFT JOIN municipios m ON m.uf = v.uf AND m.cd_municipio = v.cd_municipio
-         WHERE v.uf = ?
+         WHERE v.turno = ? AND v.uf = ?
          GROUP BY v.cd_municipio
-         ORDER BY votosApos17 DESC, nome`,
+         ORDER BY votosTotal DESC, nome`,
       )
-      .all(uf) as unknown as RankingLinha[];
+      .all(turno, uf) as unknown as RankingLinha[];
     return linhas.map(completarRanking);
   }
 
-  private where(_tabela: string, filtro: Filtro): { sql: string; params: (string | number)[] } {
-    const partes: string[] = [];
-    const params: (string | number)[] = [];
+  private where(filtro: Filtro): { sql: string; params: (string | number)[] } {
+    const partes = ["turno = ?"];
+    const params: (string | number)[] = [filtro.turno];
     if (filtro.uf) {
       partes.push("uf = ?");
       params.push(filtro.uf);
@@ -330,28 +273,22 @@ export class Repositorio {
       partes.push("cd_municipio = ?");
       params.push(filtro.municipio);
     }
-    return { sql: partes.length ? `WHERE ${partes.join(" AND ")}` : "", params };
+    return { sql: `WHERE ${partes.join(" AND ")}`, params };
   }
 }
 
 function completarRanking(linha: RankingLinha): RankingLinha {
-  const votosTotal = Number(linha.votosTotal);
-  const votosApos17 = Number(linha.votosApos17);
   return {
     chave: String(linha.chave),
     nome: linha.nome,
-    votosTotal,
-    votosApos17,
-    votos17a18: Number(linha.votos17a18),
-    votos18a19: Number(linha.votos18a19),
-    votosApos19: Number(linha.votosApos19),
-    pctApos17: percentual(votosApos17, votosTotal),
+    votosTotal: Number(linha.votosTotal),
   };
 }
 
 function numeroProgresso(linha: ProgressoUf): ProgressoUf {
   return {
     ...linha,
+    turno: Number(linha.turno),
     arquivos: Number(linha.arquivos),
     erros: Number(linha.erros),
     votos: Number(linha.votos),

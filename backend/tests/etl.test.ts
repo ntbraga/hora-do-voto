@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { criarTrava, executarEmParalelo, limitarParalelo, TETO_PARALELO } from "../src/etl/etl.js";
+import { criarTrava, executarEmParalelo, limitarParalelo, resolverTurnos, TETO_PARALELO } from "../src/etl/etl.js";
+
+test("sem turno pedido, o ETL baixa os dois", () => {
+  assert.deepEqual(resolverTurnos(undefined), [1, 2]);
+  assert.deepEqual(resolverTurnos(1), [1]);
+  assert.deepEqual(resolverTurnos(2), [2]);
+  assert.throws(() => resolverTurnos(0), /--turno inválido/);
+  assert.throws(() => resolverTurnos(3), /--turno inválido/);
+});
 
 test("limita o paralelo entre 1 e 4", () => {
   assert.equal(limitarParalelo(1), 1);

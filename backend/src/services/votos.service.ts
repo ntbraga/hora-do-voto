@@ -4,7 +4,7 @@ import type { Filtro, RankingLinha, Repositorio, ResumoConsulta, HoraConsulta, P
 
 export interface MetaPainel {
   ano: number;
-  turno: number;
+  turnos: number[];
   modo: string;
   atualizadoEm: string | null;
   ufs: string[];
@@ -39,11 +39,10 @@ export class VotosService {
 
   meta(): MetaPainel {
     const ano = Number(this.repositorio.obterMeta("ano") ?? 2026);
-    const turno = Number(this.repositorio.obterMeta("turno") ?? 2);
     const modo = this.repositorio.obterMeta("modo") ?? "vazio";
     return {
       ano,
-      turno,
+      turnos: this.repositorio.turnosComVoto(),
       modo,
       atualizadoEm: this.repositorio.obterMeta("atualizado_em"),
       ufs: this.repositorio.ufsComVoto(),
@@ -52,8 +51,8 @@ export class VotosService {
     };
   }
 
-  municipios(uf: string): { cdMunicipio: number; nome: string }[] {
-    return this.repositorio.municipiosDaUf(uf);
+  municipios(uf: string, turno: number): { cdMunicipio: number; nome: string }[] {
+    return this.repositorio.municipiosDaUf(uf, turno);
   }
 
   resumo(filtro: Filtro): ResumoConsulta {
@@ -64,9 +63,9 @@ export class VotosService {
     return this.repositorio.horaAHora(filtro);
   }
 
-  ranking(uf?: string): { nivel: "uf" | "municipio"; linhas: RankingLinha[] } {
-    if (uf) return { nivel: "municipio", linhas: this.repositorio.rankingMunicipios(uf) };
-    return { nivel: "uf", linhas: this.repositorio.rankingUf() };
+  ranking(turno: number, uf?: string): { nivel: "uf" | "municipio"; linhas: RankingLinha[] } {
+    if (uf) return { nivel: "municipio", linhas: this.repositorio.rankingMunicipios(turno, uf) };
+    return { nivel: "uf", linhas: this.repositorio.rankingUf(turno) };
   }
 
   resultadoOficial(): ResultadoOficial | null {

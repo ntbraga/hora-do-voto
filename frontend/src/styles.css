@@ -6,8 +6,6 @@
   --linha: #e4e0d8;
   --pt: #c8102e;
   --pl: #0033a0;
-  --cinza: #c4c1ba;
-  --tarde: #4d4b47;
   color: var(--tinta);
   background: var(--fundo);
   font-family: "Segoe UI", Helvetica, Arial, sans-serif;
@@ -104,7 +102,7 @@ button:disabled { color: #9c9892; cursor: default; }
 
 .kpis {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -124,10 +122,6 @@ button:disabled { color: #9c9892; cursor: default; }
   font-weight: 600;
   letter-spacing: -0.03em;
 }
-
-.faixa-prorrogacao { box-shadow: inset 0 3px 0 var(--pt), inset 0 -3px 0 var(--pl); }
-.faixa-pt { box-shadow: inset 3px 0 0 var(--pt); }
-.faixa-pl { box-shadow: inset 3px 0 0 var(--pl); }
 
 .painel-bloco { padding: 16px 16px 14px; margin-bottom: 16px; }
 .bloco-titulo h2 { margin: 0; font-size: 18px; font-weight: 600; }
@@ -154,10 +148,8 @@ button:disabled { color: #9c9892; cursor: default; }
   border-radius: 2px;
   vertical-align: -1px;
 }
-.swatch.cinza { background: var(--cinza); }
-.swatch.pt, .marca.pt, .trilho .pt { background: var(--pt); }
-.swatch.pl, .marca.pl, .trilho .pl { background: var(--pl); }
-.swatch.tarde { background: var(--tarde); }
+.marca.pt, .trilho .pt { background: var(--pt); }
+.marca.pl, .trilho .pl { background: var(--pl); }
 
 .colunas {
   display: grid;
@@ -172,8 +164,6 @@ th, td { padding: 8px 8px; text-align: right; border-bottom: 1px solid var(--lin
 th:first-child, td:first-child { text-align: left; }
 th { color: var(--mudo); font-size: 12px; font-weight: 600; }
 tr.ativa td { background: #f7f5f1; }
-td.pt { color: var(--pt); }
-td.pl { color: var(--pl); }
 
 .candidatos { list-style: none; margin: 0; padding: 0; }
 .candidatos li + li { margin-top: 16px; }

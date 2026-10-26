@@ -8,7 +8,7 @@
           <p class="olho">Tribunal Superior Eleitoral · logs das urnas</p>
           <h1>Votos por horário de registro</h1>
           <p class="sub">
-            {{ meta ? `${meta.turno}º turno de ${meta.ano}` : "2º turno de 2026" }}
+            Eleições de {{ meta?.ano ?? 2026 }}
             · contagem pela hora em que a urna computou o voto, não pela apuração
           </p>
         </div>
@@ -20,21 +20,30 @@
       <p v-if="erro" class="erro" role="alert">{{ erro }}</p>
 
       <FiltrosBar
+        :visao="visao"
         :uf="uf"
         :municipio="municipio"
         :ufs="ufs"
+        :turnos="turnos"
         :municipios="municipios"
+        @visao="definirVisao"
         @uf="definirUf"
         @municipio="definirMunicipio"
         @limpar="limpar"
       />
 
       <p v-if="carregando" class="estado">Atualizando…</p>
-      <KpiCards v-if="resumo" :resumo="resumo" />
-      <HistogramaHora v-if="horas.length" :horas="horas" />
+      <KpiCards v-if="cartoes.length" :cartoes="cartoes" />
+      <HistogramaHora v-if="series.length" :series="series" />
 
       <div class="colunas">
-        <RankingTabela :nivel="nivelRanking" :linhas="ranking" :selecionado="municipio" />
+        <RankingTabela
+          :nivel="nivelRanking"
+          :linhas="linhas"
+          :titulos="titulos"
+          :comparar="comparar"
+          :selecionado="municipio"
+        />
         <ResultadoOficial v-if="oficial" :resultado="oficial" />
       </div>
     </main>
@@ -54,9 +63,25 @@ import ResultadoOficial from "../components/ResultadoOficial.vue";
 import { usePainelStore } from "../stores/painel";
 
 const store = usePainelStore();
-const { uf, municipio, meta, municipios, resumo, horas, ranking, nivelRanking, oficial, carregando, erro, ufs } =
-  storeToRefs(store);
-const { iniciar, definirUf, definirMunicipio, limpar } = store;
+const {
+  visao,
+  uf,
+  municipio,
+  meta,
+  municipios,
+  cartoes,
+  series,
+  linhas,
+  titulos,
+  nivelRanking,
+  oficial,
+  carregando,
+  erro,
+  ufs,
+  turnos,
+  comparar,
+} = storeToRefs(store);
+const { iniciar, definirVisao, definirUf, definirMunicipio, limpar } = store;
 
 onMounted(() => {
   void iniciar().catch((falha: unknown) => {

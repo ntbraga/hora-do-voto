@@ -1,36 +1,23 @@
 <template>
-  <section class="kpis" aria-label="Totais do recorte">
-    <article>
-      <p>Votos no log</p>
-      <strong>{{ numero(resumo.votosTotal) }}</strong>
-      <span>{{ numero(resumo.secoes) }} seções</span>
-    </article>
-    <article class="faixa-prorrogacao">
-      <p>Após as 17h</p>
-      <strong>{{ numero(resumo.votosApos17) }}</strong>
-      <span>{{ percentual(resumo.pctApos17) }} do recorte · {{ numero(resumo.secoesComVotoTardio) }} seções</span>
-    </article>
-    <article class="faixa-pt">
-      <p>17h–18h</p>
-      <strong>{{ numero(resumo.votos17a18) }}</strong>
-      <span>hora 17, horário de Brasília</span>
-    </article>
-    <article class="faixa-pl">
-      <p>18h–19h</p>
-      <strong>{{ numero(resumo.votos18a19) }}</strong>
-      <span>hora 18, horário de Brasília</span>
-    </article>
-    <article>
-      <p>A partir das 19h</p>
-      <strong>{{ numero(resumo.votosApos19) }}</strong>
-      <span>fora da janela prorrogada</span>
+  <section class="kpis" aria-label="Totais">
+    <article v-for="cartao in cartoes" :key="cartao.titulo">
+      <p>{{ cartao.titulo }}</p>
+      <strong>{{ numero(cartao.votos) }}</strong>
+      <span>{{ rotuloSecoes(cartao) }}</span>
     </article>
   </section>
 </template>
 
 <script setup lang="ts">
-import type { Resumo } from "../services/api";
-import { numero, percentual } from "../services/formato";
+import type { Cartao } from "../stores/painel";
+import { numero } from "../services/formato";
 
-defineProps<{ resumo: Resumo }>();
+defineProps<{ cartoes: Cartao[] }>();
+
+function rotuloSecoes(cartao: Cartao): string {
+  if (cartao.titulo !== "Diferença") return `${numero(cartao.secoes)} seções`;
+  if (cartao.secoes === 0) return "mesmas seções";
+  const sentido = cartao.secoes > 0 ? "a mais" : "a menos";
+  return `${numero(Math.abs(cartao.secoes))} seções ${sentido}`;
+}
 </script>

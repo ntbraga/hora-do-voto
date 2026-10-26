@@ -1,13 +1,6 @@
 export interface Resumo {
   votosTotal: number;
-  votosAte17: number;
-  votos17a18: number;
-  votos18a19: number;
-  votosApos19: number;
-  votosApos17: number;
-  pctApos17: number;
   secoes: number;
-  secoesComVotoTardio: number;
 }
 
 export interface Hora {
@@ -19,16 +12,11 @@ export interface RankingLinha {
   chave: string;
   nome: string;
   votosTotal: number;
-  votosApos17: number;
-  votos17a18: number;
-  votos18a19: number;
-  votosApos19: number;
-  pctApos17: number;
 }
 
 export interface Meta {
   ano: number;
-  turno: number;
+  turnos: number[];
   modo: string;
   atualizadoEm: string | null;
   ufs: string[];
@@ -57,6 +45,7 @@ export interface ResultadoOficial {
 }
 
 export interface Filtro {
+  turno: number;
   uf?: string;
   municipio?: number;
 }
@@ -72,17 +61,18 @@ async function obter<T>(caminho: string): Promise<T> {
 
 function consulta(filtro: Filtro): string {
   const params = new URLSearchParams();
+  params.set("turno", String(filtro.turno));
   if (filtro.uf) params.set("uf", filtro.uf);
   if (filtro.municipio != null) params.set("municipio", String(filtro.municipio));
-  const texto = params.toString();
-  return texto ? `?${texto}` : "";
+  return `?${params.toString()}`;
 }
 
 export const api = {
   meta: () => obter<Meta>("/api/meta"),
-  municipios: (uf: string) => obter<Municipio[]>(`/api/municipios?uf=${uf}`),
+  municipios: (uf: string, turno: number) => obter<Municipio[]>(`/api/municipios?uf=${uf}&turno=${turno}`),
   resumo: (filtro: Filtro) => obter<Resumo>(`/api/resumo${consulta(filtro)}`),
   horaAHora: (filtro: Filtro) => obter<{ horas: Hora[] }>(`/api/hora-a-hora${consulta(filtro)}`),
-  ranking: (uf?: string) => obter<{ nivel: "uf" | "municipio"; linhas: RankingLinha[] }>(`/api/ranking${uf ? `?uf=${uf}` : ""}`),
+  ranking: (turno: number, uf?: string) =>
+    obter<{ nivel: "uf" | "municipio"; linhas: RankingLinha[] }>(`/api/ranking?turno=${turno}${uf ? `&uf=${uf}` : ""}`),
   resultadoOficial: () => obter<ResultadoOficial>("/api/resultado-oficial"),
 };
