@@ -41,9 +41,12 @@ Cada zip tem de centenas de MB a vários GB. O download retoma de onde parou (`*
 npm run etl -- --turno 2 --ufs AC
 npm run etl -- --turno 2 --ufs AC,BA,RJ,SP
 npm run etl -- --turno 2 --ufs ALL
+npm run etl -- --turno 2 --ufs ALL --paralelo 3
 npm run etl -- --zip /caminho/bu_....zip --uf AC
 npm run etl -- --turno 1 --ufs AC
 ```
+
+`--paralelo` define quantos zips baixam ao mesmo tempo (padrão 1, teto 4). A gravação no banco continua uma UF por vez.
 
 Se o 2º turno ainda não foi publicado, o comando para antes de apagar a amostra e explica o motivo. Os nomes dos municípios vêm de [municipio_tse_ibge.zip](https://cdn.tse.jus.br/estatistica/sead/odsele/municipio_tse_ibge/municipio_tse_ibge.zip).
 

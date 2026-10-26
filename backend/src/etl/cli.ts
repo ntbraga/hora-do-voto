@@ -3,7 +3,7 @@ import { abrirConexao } from "../db/conexao.js";
 import { Repositorio } from "../db/repositorio.js";
 import { listarUfs } from "../domain/ufs.js";
 import { carregarAmostra } from "./amostra.js";
-import { executarEtl } from "./etl.js";
+import { executarEtl, limitarParalelo } from "./etl.js";
 
 /**
  * CLI do pipeline.
@@ -11,6 +11,7 @@ import { executarEtl } from "./etl.js";
  *   npm run seed                         amostra de demonstração
  *   npm run etl -- --turno 2 --ufs ALL   Brasil, turno pedido
  *   npm run etl -- --turno 2 --ufs AC,BA
+ *   npm run etl -- --turno 2 --ufs ALL --paralelo 3
  *   npm run etl -- --zip ./arquivo.zip --uf AC
  */
 async function main(): Promise<void> {
@@ -31,8 +32,9 @@ async function main(): Promise<void> {
   const zip = typeof args.zip === "string" ? args.zip : undefined;
   const uf = typeof args.uf === "string" ? args.uf.toUpperCase() : undefined;
   const ufs = listarUfs(typeof args.ufs === "string" ? args.ufs : "ALL");
+  const paralelo = args.paralelo == null ? 1 : limitarParalelo(typeof args.paralelo === "string" ? Number(args.paralelo) : Number.NaN);
 
-  const resumo = await executarEtl(repositorio, { ano, turno, ufs, zip, uf });
+  const resumo = await executarEtl(repositorio, { ano, turno, ufs, zip, uf, paralelo });
   console.log(`Concluído. UFs: ${resumo.processadas.join(", ") || "nenhuma"}. Falhas: ${resumo.falhas.length}.`);
   if (resumo.processadas.length === 0) process.exitCode = 1;
 }
