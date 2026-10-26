@@ -1,0 +1,23 @@
+{
+  "ano": 2026,
+  "turno": 2,
+  "cargo": "Presidente",
+  "fonte": "Totais da apuração do 2º turno de 2026 (Presidente), divulgados em 26/10/2026. Não são calculados a partir dos logs das urnas.",
+  "observacao": "O log da urna registra o horário em que o voto foi computado e não identifica o candidato. Estes totais servem só de contexto para a escala da prorrogação.",
+  "candidatos": [
+    {
+      "nome": "Luiz Inácio Lula da Silva",
+      "partido": "PT",
+      "sigla": "PT",
+      "votos": 64256232,
+      "percentual": 51.79
+    },
+    {
+      "nome": "Flávio Bolsonaro",
+      "partido": "PL",
+      "sigla": "PL",
+      "votos": 59826041,
+      "percentual": 48.21
+    }
+  ]
+}

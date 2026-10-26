@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS='--disable-warning=ExperimentalWarning' tsx watch src/index.ts",
+    "start": "NODE_OPTIONS='--disable-warning=ExperimentalWarning' tsx src/index.ts",
+    "seed": "NODE_OPTIONS='--disable-warning=ExperimentalWarning' tsx src/etl/cli.ts --seed",
+    "etl": "NODE_OPTIONS='--disable-warning=ExperimentalWarning' tsx src/etl/cli.ts",
+    "test": "NODE_OPTIONS='--disable-warning=ExperimentalWarning' tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "fastify": "^5.6.2",
+    "yauzl": "^2.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "@types/yauzl": "^2.10.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

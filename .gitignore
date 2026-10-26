@@ -1,0 +1,8 @@
+node_modules/
+agent-tools/
+dist/
+*.log
+backend/data/
+backend/dados/municipios.csv
+.DS_Store
+*.parcial
