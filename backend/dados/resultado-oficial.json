@@ -3,7 +3,7 @@
   "turno": 2,
   "cargo": "Presidente",
   "fonte": "Totais da apuração do 2º turno de 2026 (Presidente), divulgados em 26/10/2026. Não são calculados a partir dos logs das urnas.",
-  "observacao": "O log da urna registra o horário em que o voto foi computado e não identifica o candidato. Estes totais servem só de contexto para a escala da prorrogação.",
+  "observacao": "O log da urna registra o horário em que o voto foi computado e não identifica o candidato. Estes totais são a apuração oficial e não saem dos logs.",
   "candidatos": [
     {
       "nome": "Luiz Inácio Lula da Silva",

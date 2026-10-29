@@ -15,6 +15,7 @@ export interface ResultadoArquivo {
  */
 export async function incorporarLog(
   repositorio: Repositorio,
+  turno: number,
   uf: string,
   nome: string,
   conteudo: Buffer,
@@ -26,6 +27,7 @@ export async function incorporarLog(
 
   const fuso = estimarFuso(eventos.aberturaSegundos, eventos.votosSegundos[0] ?? null, uf);
   repositorio.somarSecao({
+    turno,
     uf,
     cdMunicipio: secao.cdMunicipio,
     zona: secao.zona,
@@ -38,6 +40,7 @@ export async function incorporarLog(
 export async function processarZipUf(
   repositorio: Repositorio,
   caminhoZip: string,
+  turno: number,
   uf: string,
 ): Promise<ResultadoArquivo> {
   const resultado: ResultadoArquivo = { arquivos: 0, erros: 0, votos: 0 };
@@ -45,11 +48,11 @@ export async function processarZipUf(
 
   repositorio.iniciarTransacao();
   try {
-    repositorio.limparUf(uf);
+    repositorio.limparUf(turno, uf);
     await percorrerLogs(caminhoZip, async (nome, dados) => {
       resultado.arquivos += 1;
       try {
-        await incorporarLog(repositorio, uf, nome, dados);
+        await incorporarLog(repositorio, turno, uf, nome, dados);
       } catch (erro) {
         resultado.erros += 1;
         if (detalhes.length < 5) {
@@ -58,8 +61,9 @@ export async function processarZipUf(
         }
       }
     });
-    resultado.votos = repositorio.resumo({ uf }).votosTotal;
+    resultado.votos = repositorio.resumo({ turno, uf }).votosTotal;
     repositorio.registrarProgresso({
+      turno,
       uf,
       status: resultado.votos === 0 ? "erro" : "ok",
       arquivos: resultado.arquivos,
@@ -73,6 +77,7 @@ export async function processarZipUf(
     repositorio.desfazerTransacao();
     const mensagem = erro instanceof Error ? erro.message : String(erro);
     repositorio.registrarProgresso({
+      turno,
       uf,
       status: "erro",
       arquivos: resultado.arquivos,

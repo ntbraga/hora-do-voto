@@ -1,34 +1,26 @@
 <template>
   <section class="painel-bloco">
     <header class="bloco-titulo">
-      <h2>{{ nivel === "uf" ? "Por UF, depois das 17h" : "Por município, depois das 17h" }}</h2>
-      <p>Ordenado pelos votos registrados a partir das 17h. A cor não indica candidato.</p>
+      <h2>{{ nivel === "uf" ? "Por UF" : "Por município" }}</h2>
+      <p>{{ comparar ? "Totais de cada turno e a diferença do 2º em relação ao 1º." : "Ordenado pelo total de votos." }}</p>
     </header>
     <div class="tabela-wrap">
       <table>
         <thead>
           <tr>
             <th>{{ nivel === "uf" ? "UF" : "Município" }}</th>
-            <th>Votos</th>
-            <th>Após 17h</th>
-            <th>17h–18h</th>
-            <th>18h–19h</th>
-            <th>Após 19h</th>
-            <th>%</th>
+            <th v-for="titulo in titulos" :key="titulo">{{ titulo }}</th>
+            <th v-if="comparar">Diferença</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="linha in linhas" :key="linha.chave" :class="{ ativa: selecionado != null && linha.chave === String(selecionado) }">
             <td>{{ linha.nome }}</td>
-            <td>{{ numero(linha.votosTotal) }}</td>
-            <td>{{ numero(linha.votosApos17) }}</td>
-            <td class="pt">{{ numero(linha.votos17a18) }}</td>
-            <td class="pl">{{ numero(linha.votos18a19) }}</td>
-            <td>{{ numero(linha.votosApos19) }}</td>
-            <td>{{ percentual(linha.pctApos17) }}</td>
+            <td v-for="(valor, indice) in linha.colunas" :key="indice">{{ numero(valor) }}</td>
+            <td v-if="comparar">{{ numero(linha.diferenca ?? 0) }}</td>
           </tr>
           <tr v-if="linhas.length === 0">
-            <td colspan="7">Nenhum voto neste recorte.</td>
+            <td :colspan="1 + titulos.length + (comparar ? 1 : 0)">Nenhum voto neste recorte.</td>
           </tr>
         </tbody>
       </table>
@@ -37,12 +29,14 @@
 </template>
 
 <script setup lang="ts">
-import type { RankingLinha } from "../services/api";
-import { numero, percentual } from "../services/formato";
+import { numero } from "../services/formato";
+import type { LinhaTabela } from "../stores/painel";
 
 defineProps<{
   nivel: "uf" | "municipio";
-  linhas: RankingLinha[];
+  linhas: LinhaTabela[];
+  titulos: string[];
+  comparar: boolean;
   selecionado: number | null;
 }>();
 </script>

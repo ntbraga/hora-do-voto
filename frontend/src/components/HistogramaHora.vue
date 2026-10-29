@@ -7,11 +7,10 @@
     <div class="grafico">
       <Bar :data="dados" :options="opcoes" />
     </div>
-    <ul class="legenda">
-      <li><i class="swatch cinza" /> até 17h</li>
-      <li><i class="swatch pt" /> 17h–18h</li>
-      <li><i class="swatch pl" /> 18h–19h</li>
-      <li><i class="swatch tarde" /> a partir de 19h</li>
+    <ul v-if="series.length > 1" class="legenda">
+      <li v-for="serie in series" :key="serie.nome">
+        <i class="swatch" :style="{ background: serie.cor }" /> {{ serie.nome }}
+      </li>
     </ul>
   </section>
 </template>
@@ -20,47 +19,38 @@
 import { BarElement, CategoryScale, Chart as ChartJS, LinearScale, Tooltip } from "chart.js";
 import { computed } from "vue";
 import { Bar } from "vue-chartjs";
-import type { Hora } from "../services/api";
 import { numero } from "../services/formato";
+import type { SerieHora } from "../stores/painel";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip);
 
-const props = defineProps<{ horas: Hora[] }>();
+const props = defineProps<{ series: SerieHora[] }>();
 
-const CINZA = "#c4c1ba";
-const PT = "#C8102E";
-const PL = "#0033A0";
-const TARDE = "#4d4b47";
-
-const visiveis = computed(() => {
+const horasVisiveis = computed(() => {
   let minimo = 8;
   let maximo = 19;
-  for (const item of props.horas) {
-    if (item.votos > 0) {
-      minimo = Math.min(minimo, item.hora);
-      maximo = Math.max(maximo, item.hora);
+  for (const serie of props.series) {
+    for (const item of serie.horas) {
+      if (item.votos > 0) {
+        minimo = Math.min(minimo, item.hora);
+        maximo = Math.max(maximo, item.hora);
+      }
     }
   }
-  return props.horas.filter((item) => item.hora >= minimo && item.hora <= maximo);
+  const horas: number[] = [];
+  for (let hora = minimo; hora <= maximo; hora += 1) horas.push(hora);
+  return horas;
 });
 
-function cor(hora: number): string {
-  if (hora === 17) return PT;
-  if (hora === 18) return PL;
-  if (hora >= 19) return TARDE;
-  return CINZA;
-}
-
 const dados = computed(() => ({
-  labels: visiveis.value.map((item) => `${String(item.hora).padStart(2, "0")}h`),
-  datasets: [
-    {
-      data: visiveis.value.map((item) => item.votos),
-      backgroundColor: visiveis.value.map((item) => cor(item.hora)),
-      borderRadius: 2,
-      maxBarThickness: 42,
-    },
-  ],
+  labels: horasVisiveis.value.map((hora) => `${String(hora).padStart(2, "0")}h`),
+  datasets: props.series.map((serie) => ({
+    label: serie.nome,
+    data: horasVisiveis.value.map((hora) => serie.horas.find((item) => item.hora === hora)?.votos ?? 0),
+    backgroundColor: serie.cor,
+    borderRadius: 2,
+    maxBarThickness: 28,
+  })),
 }));
 
 const opcoes = {
@@ -73,8 +63,9 @@ const opcoes = {
       titleFont: { family: "Segoe UI, Helvetica, Arial, sans-serif" },
       bodyFont: { family: "Segoe UI, Helvetica, Arial, sans-serif" },
       callbacks: {
-        label(contexto: { parsed: { y: number | null } }): string {
-          return `${numero(contexto.parsed.y ?? 0)} votos`;
+        label(contexto: { dataset: { label?: string }; parsed: { y: number | null } }): string {
+          const nome = contexto.dataset.label ? `${contexto.dataset.label}: ` : "";
+          return `${nome}${numero(contexto.parsed.y ?? 0)} votos`;
         },
       },
     },

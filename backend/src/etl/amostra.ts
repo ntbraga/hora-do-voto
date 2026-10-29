@@ -7,6 +7,8 @@ import type { Repositorio } from "../db/repositorio.js";
 import { garantirMunicipios } from "./municipios.js";
 import { incorporarLog } from "./processar.js";
 
+const TURNO_AMOSTRA = 1;
+
 const AVISO_AMOSTRA =
   "Amostra de demonstração. Os votos hora a hora vieram de logs fictícios, no formato do TSE, " +
   "para o painel funcionar sem baixar os zips. Rode o ETL para substituir pelos arquivos oficiais.";
@@ -30,14 +32,15 @@ export async function carregarAmostra(repositorio: Repositorio): Promise<void> {
       for (const arquivo of arquivos) {
         const conteudo = await fs.promises.readFile(path.join(pasta, arquivo));
         try {
-          await incorporarLog(repositorio, uf, arquivo, conteudo);
+          await incorporarLog(repositorio, TURNO_AMOSTRA, uf, arquivo, conteudo);
         } catch (erro) {
           erros += 1;
           console.error(`${uf}/${arquivo}: ${erro instanceof Error ? erro.message : erro}`);
         }
       }
-      const votos = repositorio.resumo({ uf }).votosTotal;
+      const votos = repositorio.resumo({ turno: TURNO_AMOSTRA, uf }).votosTotal;
       repositorio.registrarProgresso({
+        turno: TURNO_AMOSTRA,
         uf,
         status: "amostra",
         arquivos: arquivos.length,
@@ -54,7 +57,7 @@ export async function carregarAmostra(repositorio: Repositorio): Promise<void> {
 
   repositorio.definirMeta("modo", "fixture");
   repositorio.definirMeta("ano", "2026");
-  repositorio.definirMeta("turno", "2");
+  repositorio.definirMeta("turnos", String(TURNO_AMOSTRA));
   repositorio.definirMeta("atualizado_em", new Date().toISOString());
   repositorio.definirMeta("aviso", AVISO_AMOSTRA);
 }

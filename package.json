@@ -2,7 +2,7 @@
   "name": "tse-votos-hora",
   "private": true,
   "version": "1.0.0",
-  "description": "Painel de votos por horário de registro nas urnas (TSE), com foco na prorrogação após as 17h.",
+  "description": "Painel de votos por horário de registro nas urnas (TSE), no 1º e no 2º turno.",
   "scripts": {
     "dev": "concurrently -n api,web -c gray,gray \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "seed": "npm run seed -w backend",
